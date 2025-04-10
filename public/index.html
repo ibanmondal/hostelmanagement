@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HKBK Hostel Management</title>
+  <style>
+    body {
+      font-family: Arial;
+      padding: 20px;
+      margin: 0;
+      background: url('bg.jpg') no-repeat center center fixed;
+      background-size: cover;
+      color: white;
+      text-shadow: 1px 1px 2px #000;
+    }
+
+    h1 {
+      text-align: center;
+      text-shadow: 2px 2px 4px #000;
+    }
+
+    form {
+      background-color: rgba(0, 0, 0, 0.6);
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 400px;
+      margin: auto;
+    }
+
+    input, button {
+      margin: 10px 0;
+      padding: 10px;
+      width: 100%;
+      box-sizing: border-box;
+      border: none;
+      border-radius: 5px;
+    }
+
+    button {
+      background-color: #28a745;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    a button {
+      background-color: #007bff;
+    }
+
+    #msg {
+      text-align: center;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    #chatbot-container {
+  max-width: 400px;
+  margin: 30px auto;
+  background: url('chatbot-bg.jpg') no-repeat center center;
+  background-size: cover;
+  border-radius: 10px;
+  padding: 15px;
+  position: relative;
+  color: white;
+}
+
+
+    #chatbox {
+      height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 10px;
+      background: #fff;
+      color: black;
+      border-radius: 5px;
+      margin-bottom: 10px;
+    }
+
+    .chat-msg {
+      margin: 5px 0;
+    }
+
+    .chat-user {
+      font-weight: bold;
+    }
+    #chatbot-icon {
+  position: fixed;
+  bottom: 25px;
+  right: 25px;
+  background-color: teal;
+  color: white;
+  font-size: 24px;
+  padding: 15px;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 999;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+#chatbot-container.hidden {
+  display: none;
+}
+
+#chatbot-container {
+  position: fixed;
+  bottom: 80px;
+  right: 25px;
+  width: 350px;
+  z-index: 999;
+}
+
+  </style>
+</head>
+<body>
+  <h1>HKBK HOSTEL MANAGEMENT</h1>
+  <form id="addForm">
+    <input type="text" name="name" placeholder="Name" required><br>
+    <input type="text" name="year" placeholder="Year" required><br>
+    <input type="text" name="department" placeholder="Department" required><br>
+
+<!-- Gender selection -->
+<select name="gender" required>
+  <option value="">Select Gender</option>
+  <option value="Male">Male</option>
+  <option value="Female">Female</option>
+</select>
+
+
+
+    <input type="text" name="contact" placeholder="Contact" required><br>
+    <button type="submit">Auto Assign Room</button>
+  </form>
+  <a href="/dashboard"><button>Go to Dashboard</button></a>
+  <p id="msg"></p>
+
+  <!-- Chatbot Section -->
+  <div id="chatbot-container" class="hidden">
+    <div id="chatbox"></div>
+    <input type="text" id="chatInput" placeholder="Ask me something... (e.g. 'available rooms')" />
+    <button onclick="sendMessage()">Send</button>
+  </div>
+   <!-- Chatbot Toggle Icon -->
+<div id="chatbot-icon" onclick="toggleChatbot()">💬</div>
+
+  <script>
+    const form = document.getElementById('addForm');
+    const msg = document.getElementById('msg');
+    const chatbox = document.getElementById('chatbox');
+    const chatInput = document.getElementById('chatInput');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const studentData = {};
+      formData.forEach((value, key) => studentData[key] = value);
+
+      const res = await fetch('/assign-room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(studentData)
+      });
+
+      const result = await res.text();
+      msg.textContent = result;
+      form.reset();
+    });
+
+    function sendMessage() {
+      const message = chatInput.value.trim();
+      if (!message) return;
+      addMessage("You", message);
+      chatInput.value = "";
+      respondTo(message);
+    }
+
+    function addMessage(sender, text) {
+      const msg = document.createElement("div");
+      msg.classList.add("chat-msg");
+      msg.innerHTML = `<span class="chat-user">${sender}:</span> ${text}`;
+      chatbox.appendChild(msg);
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    function respondTo(message) {
+      const msg = message.toLowerCase();
+
+      if (msg.includes("apply for room")) {
+        addMessage("Bot", "To apply for a room, fill out the form above and click 'Auto Assign Room'.");
+        return;
+      }
+
+      if (msg.includes("rules")) {
+        addMessage("Bot", "Hostel Rules: Maintain cleanliness, no loud music after 10 PM, and respect others' space.");
+        return;
+      }
+
+      if (msg.includes("available rooms")) {
+        fetch('/available-rooms')
+          .then(res => res.json())
+          .then(data => {
+            const roomList = data.length > 0 ? data.slice(0, 10).join(', ') + (data.length > 10 ? '...' : '') : 'No rooms available';
+            const response = `🛏️ ${data.length} rooms available.\nRoom Numbers: ${roomList}`;
+            addMessage("Bot", response);
+          })
+          .catch(() => addMessage("Bot", "Error fetching room data."));
+        return;
+      }
+
+      if (msg.includes("warden contact")) {
+        fetch('/warden-info')
+          .then(res => res.json())
+          .then(data => {
+            const response = `📞 Warden Contact:\nName: ${data.name}\nEmail: ${data.email}\nPhone: ${data.contact}`;
+            addMessage("Bot", response);
+          })
+          .catch(() => addMessage("Bot", "Error fetching warden info."));
+        return;
+      }
+
+      addMessage("Bot", "Sorry, I didn't understand that. Try asking about 'available rooms', 'warden contact', or 'rules'.");
+    }
+    function toggleChatbot() {
+    const chatbotContainer = document.getElementById("chatbot-container");
+    chatbotContainer.classList.toggle("hidden");
+  }
+  </script>
+  <script>
+    console.log("%c🚫 This project was created by IBAN NADIR MONDAL. Unauthorized copying or distribution is prohibited.",
+                "color: red; font-size: 16px; font-weight: bold;");
+  </script>
+  <footer style="position: fixed; bottom: 5px; right: 5px; color: #fff; font-size: 10px;">
+    © 2025 IBAN NADIR MONDAL
+  </footer>
+  
+  
+ 
+
+</body>
+</html>
